@@ -5,6 +5,44 @@ import { headers } from "next/headers"
 import { Octokit } from "octokit"
 import prisma from "@/lib/prisma"
 
+export const getContributionStats = async () => {
+    try {
+        const session = await auth.api.getSession({
+            headers: await headers()
+        })
+        if (!session) {
+            throw new Error("Unauthorized")
+        }
+
+        const token = await getGithubToken()
+        const ocktokit = new Octokit({ auth: token })
+
+        const { data: user } = await ocktokit.rest.users.getAuthenticated()
+
+        const calendar = await findUserContribution(token, user.login)
+
+        if (!calendar) {
+            return null
+        }
+
+        const contributions = calendar.weeks.flatMap((week: any) =>
+            week.contributionDays.map((day: any) => ({
+                date: day.date,
+                count: day.contributionCount,
+                level: Math.min(4, Math.floor(day.contributionCount / 3)), // Convert to 0-4 scale
+            }))
+        )
+
+        return {
+            contributions,
+            totalContributions: calendar.totalContributions
+        }
+
+    } catch (error) {
+
+    }
+}
+
 export const getDashboardStats = async () => {
     try {
         const session = await auth.api.getSession({
@@ -20,10 +58,7 @@ export const getDashboardStats = async () => {
         //get user's github username
         const { data: user } = await ocktokit.rest.users.getAuthenticated()
 
-        console.log("\n\nuser data [ocktokit.rest.users.getAuthenticated()] :\n", user, "\n\n")
-
         const calender = await findUserContribution(token, user.login)
-        console.log("\n\nuser contribution [findUserContribution(token, user.login)] :\n", calender, "\n\n")
         const totalCommits = calender?.totalContributions || 0
 
         //Find total PRs from database or gitub

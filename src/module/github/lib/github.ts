@@ -10,8 +10,6 @@ export const getGithubToken = async () => {
 
     if (!session) { throw new Error("Unauthorized") }
 
-    console.log("\ntesting what is inside [ auth.api.getSession ]\n\n\n", session, "\n\n\n\n")
-
     const account = await prisma.account.findFirst({
         where: {
             userId: session.user.id,
@@ -70,6 +68,7 @@ export async function findUserContribution(token: string, username: string) {
         const response:any = await octokit.graphql(query, {username})
         return response.user.contributionsCollection.contributionCalendar
     } catch (error) {
-        
+        console.log("\n\nError fetching contributions : \n", error)
+        return null
     }
 }
